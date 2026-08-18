@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>keeper</title>
+<style>
+  :root {
+    --bg: #121212;
+    --card: #1E1E1E;
+    --accent-soft: #2C2C2C;
+    --text: #E6E1E5;
+    --text-soft: #8E8E93;
+    --border: #333333;
+    --shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+    --radius-lg: 28px;
+    --radius-md: 16px;
+    --radius-full: 9999px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Roboto, "Helvetica Neue", Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 0 0 40px;
+  }
+
+  .app {
+    width: 100%;
+    max-width: 560px;
+    padding: 0 16px;
+    margin-top: 64px;
+  }
+
+  .count-pill {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--text);
+    background: var(--accent-soft);
+    padding: 8px 16px;
+    border-radius: var(--radius-full);
+    box-shadow: var(--shadow);
+    z-index: 100;
+    border: 1px solid var(--border);
+  }
+
+  header {
+    padding: 8px 0 16px;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 5;
+  }
+
+  .input-row {
+    position: relative;
+    display: flex;
+    gap: 12px;
+  }
+
+  #new-item {
+    flex: 1;
+    font-family: inherit;
+    font-size: 1.05rem;
+    padding: 16px 24px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    background: var(--card);
+    color: var(--text);
+    outline: none;
+    box-shadow: var(--shadow-sm);
+  }
+
+  #new-item::placeholder {
+    color: var(--text-soft);
+  }
+
+  #new-item:focus {
+    border-color: var(--text-soft);
+  }
+
+  #add-btn {
+    flex-shrink: 0;
+    width: 56px;
+    height: 56px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    background: var(--accent-soft);
+    color: var(--text);
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: background 0.15s ease;
+  }
+
+  #add-btn:active {
+    background: var(--text);
+    color: var(--bg);
+  }
+
+  #suggestions {
+    position: absolute;
+    left: 0;
+    right: 68px;
+    top: calc(100% + 8px);
+    background: var(--card);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow);
+    padding: 8px;
+    display: none;
+    flex-wrap: wrap;
+    gap: 8px;
+    z-index: 10;
+    border: 1px solid var(--border);
+    max-height: 240px;
+    overflow-y: auto;
+  }
+
+  .suggestion-chip {
+    background: var(--accent-soft);
+    color: var(--text);
+    padding: 8px 16px;
+    border-radius: var(--radius-full);
+    font-size: 0.95rem;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    font-family: inherit;
+    white-space: nowrap;
+  }
+
+  .suggestion-chip.preset {
+    background: transparent;
+    color: var(--text-soft);
+    border: 1px dashed var(--border);
+    opacity: 0.7;
+  }
+
+  .suggestion-chip:active {
+    background: var(--text);
+    color: var(--bg);
+  }
+
+  main {
+    padding-top: 8px;
+  }
+
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--card);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    animation: item-in 0.18s ease;
+  }
+
+  @keyframes item-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .checkbox {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    border: 2px solid var(--text-soft);
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.1s ease;
+    padding: 0;
+  }
+
+  .checkbox.checked {
+    background: var(--text);
+    border-color: var(--text);
+  }
+
+  .checkbox svg {
+    width: 16px;
+    height: 16px;
+    opacity: 0;
+  }
+
+  .checkbox.checked svg {
+    opacity: 1;
+  }
+
+  .item-text {
+    flex: 1;
+    font-size: 1.05rem;
+    word-break: break-word;
+    line-height: 1.4;
+  }
+
+  li.checked-item .item-text {
+    text-decoration: line-through;
+    color: var(--text-soft);
+  }
+
+  li.checked-item {
+    background: var(--bg);
+    border: 1px solid var(--border);
+  }
+
+  .delete-btn {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: var(--text-soft);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+
+  .delete-btn:active {
+    background: var(--accent-soft);
+    color: var(--text);
+  }
+
+  .divider-row {
+    display: flex;
+    align-items: center;
+    margin: 32px 0 16px;
+  }
+
+  .divider-line {
+    height: 1px;
+    background: var(--border);
+    flex: 1;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 64px 20px;
+    color: var(--text-soft);
+  }
+
+  .empty-state p {
+    font-size: 1.05rem;
+    margin: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    li, .checkbox, #add-btn {
+      animation: none !important;
+      transition: none !important;
+    }
+  }
+</style>
+</head>
+<body>
+
+<span class="count-pill" id="count-pill">0/0</span>
+
+<div class="app">
+  <header>
+    <div class="input-row">
+      <input type="text" id="new-item" placeholder="..." autocomplete="off">
+      <button id="add-btn" aria-label="Hinzufügen">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+      </button>
+      <div id="suggestions"></div>
+    </div>
+  </header>
+
+  <main>
+    <div id="empty-state" class="empty-state" style="display:none;">
+      <p>Deine Liste ist leer. Füge oben etwas hinzu.</p>
+    </div>
+
+    <ul id="active-list"></ul>
+
+    <div class="divider-row" id="checked-divider">
+      <div class="divider-line"></div>
+    </div>
+    <ul id="checked-list"></ul>
+  </main>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  const STORAGE_KEY = 'einkaufsliste-data';
+
+  const PRESET_ITEMS = [
+    "Alufolie", "Allzweckreiniger", "Ananas", "Anzuchterde", "Apfel", "Äpfel", "Apfelwein", "Apfelsaft", "Aprikosen",
+    "Ahornsirup", "Agavendicksaft", "Alkoholfreies Bier", "Alleskleber", "Aquariumpflege", "Avocado",
+    "Backpulver", "Backpapier", "Backofenreiniger", "Badreiniger", "Balsamico", "Bananen", "Basilikum", "Batterien", "Batterien AA", "Batterien AAA",
+    "Besen", "Bier", "Binden", "Birnen", "Bitter Lemon", "Bitterschokolade", "Blumenkohl", "Blumenerde", "Blumendünger", "Blumensprüher", "Blaubeeren", "Blätterteig", "Bleistifte", "Bodylotion", "Bohnen", "Bonbons", "Brot", "Brötchen", "Bratwurst", "Brokkoli", "Briefumschläge", "Briefmarken", "Büroklammern", "Bügelhilfe", "Bulgur", "Butter",
+    "Champignons", "Champagner", "Chili", "Chiliflocken", "Chips", "Chiasamen", "Clementinen", "Cocktail-Sirup", "Cola", "Conditioner", "Couscous", "Cranberrysaft", "Croissants", "Crème fraîche", "Curry", "Currypaste",
+    "Damenhygiene", "Datteln", "Deo", "Desinfektionsspray", "Destilliertes Wasser", "Dill", "Dinkelmehl", "Druckerpapier", "Duschgel", "Dünger", "Düngestäbchen",
+    "Eier", "Eisbergsalat", "Eiscreme", "Eistee", "Eiswürfelbeutel", "Einwegstreichhölzer", "Emmentaler", "Energy Drink", "Entkalker", "Entkalker-Tabs", "Entfärber", "Erbsen", "Erdbeeren", "Erdnussbutter", "Essig", "Essiggurken",
+    "Fahrradöl", "Falafel", "Feigen", "Feuerzeug", "Fischstäbchen", "Fleckensalz", "Fleckenspray", "Feldsalat", "Flammkuchenteig", "Fleisch", "Fliegenklatsche", "Flohsamenschalen", "Flüssigseife", "Flüssigwaschmittel", "Folie", "Frischhaltefolie", "Frischkäse", "Fruchtsaft",
+    "Gallseife", "Gardinenwaschmittel", "Gartenerde", "Gefrierbeutel", "Gelbe Säcke", "Gelierzucker", "Gemüsebrühe", "Gin", "Ingwer", "Ingwer-Tee", "Insektenspray", "Isolierband", "Glasreiniger", "Glühbirnen", "Glühwein", "Gnocchi", "Gouda", "Grablichter", "Granatapfel", "Grapefruit", "Grieß", "Grillanzünder", "Grüner Tee", "Gummibärchen", "Gurken",
+    "Haarshampoo", "Haferflocken", "Haferkleie", "Hafermilch", "Hackfleisch", "Hähnchenbrust", "Handcreme", "Hefe", "Hefe frisch", "Hefeteig", "Heu", "Himbeeren", "Honig", "Honigmelone", "Holzkohle", "Hühnerbrühe", "Hummus", "Hundekotbeutel", "Hundefutter", "Hüttenkäse", "Hygienespüler", "Hygiene-Reiniger",
+    "Imprägnierwaschmittel", "Imprägnierspray", "Insektenschutz",
+    "Joghurt",
+    "Kaffee", "Kaffeefilter", "Kaffeemaschinenreiniger", "Kakao", "Kalkreiniger", "Kapern", "Karotten", "Kartoffeln", "Käse", "Katzenfutter", "Katzeneinstreu", "Katzenmilch", "Kauknochen", "Kefir", "Kehrset", "Ketchup", "Kerzen", "Kichererbsen", "Kirschen", "Kiwi", "Klebestift", "Kleintiereinstreu", "Knäckebrot", "Knoblauch", "Knopfbatterien", "Kokosmilch", "Kompostbeutel", "Kondensmilch", "Konserven", "Kontaktspray", "Kräuter TK", "Kräutertee", "Küchenrolle", "Kugelschreiber", "Kürbis", "Kürbiskerne", "Kümmel",
+    "Lachs", "Lauch", "Laugengebäck", "Lederpflege", "Leinsamen", "Limonade", "Lineal", "Linsen", "Likör", "Lorbeerblätter", "Luftpolsterfolie",
+    "Mandelmilch", "Mandeln", "Mango", "Marmelade", "Mascarpone", "Mayonnaise", "Mehl", "Meerrettich", "Mikrowellentücher", "Milch", "Milchreis", "Mineralwasser", "Möbelpolitur", "Mottenkugeln", "Mozzarella", "Mülleimerbeutel", "Müllsäcke", "Müllsäcke 35l", "Müllsäcke 60l", "Muskatnuss", "Müsli", "Müsliriegel",
+    "Natron", "Nektarinen", "Notizblock", "Nudeln", "Nüsse", "Nutella",
+    "Oliven", "Olivenöl", "Orangen", "Orangensaft", "Oregano",
+    "Paketband", "Panzertape", "Papier-Mülltüten", "Papiertaschentücher", "Papierteller", "Paprika", "Paprikapulver", "Parmesan", "Passierte Tomaten", "Pesto", "Petersilie", "Pfeffer", "Pfirsiche", "Pflaster", "Pflaumen", "Pflaumenmus", "Pinienkerne", "Pizzateig", "Popcorn", "Porree", "Post-its", "Pralinen", "Prosecco", "Puderzucker", "Putzhandschuhe",
+    "Quark", "Quinoa",
+    "Radieschen", "Radler", "Rasierer", "Rasiergel", "Radiergummi", "Reis", "Reis-Drink", "Ricotta", "Rinderbrühe", "Rohreiniger", "Rosmarin", "Rosinen", "Röstzwiebeln", "Rotwein", "Rucola", "Rum",
+    "Sahne", "Sahnesteif", "Salat", "Salami", "Salsa", "Salz", "Sauerkraut", "Saure Sahne", "Saucenbinder", "Scheuermilch", "Schere", "Schinken", "Schokolade", "Schmelzkäse", "Schmand", "Schreibblock", "Schuhcreme", "Schutzhandschuhe", "Schwarzer Tee", "Schwämme", "Seife", "Seitan", "Sekt", "Sellerie", "Semmelbrösel", "Senf", "Servietten", "Sesamöl", "Schnittlauch", "Soda-Zylinder", "Sojasauce", "Sojamilch", "Sonnenblumenkerne", "Sonnenblumenöl", "Speiseeis", "Speisestärke", "Spinat", "Spinat TK", "Spülmaschinentabs", "Spülmittel", "Spültücher", "Staubsaugerbeutel", "Staubtücher", "Stärke", "Streichhölzer", "Studentenfutter", "Suppengrün", "Süßkartoffeln",
+    "Tahin", "Tampons", "Taschentücher", "Tee", "Teelichter", "Teppichreiniger", "Tesafilm", "Textmarker", "Thermoskanne", "Thunfisch", "Thymian", "Tiefkühlbeeren", "Tiefkühlgemüse", "Tiefkühlpizza", "Tinte", "Tofu", "Toilettenpapier", "Tomaten", "Tomatenmark", "Tonic Water", "Tortellini", "Tortilla-Chips", "Toastbrot", "Trockenfrüchte", "Trockenhefe", "Trinkwasser",
+    "Umzugskartons",
+    "Vanillezucker", "Veganes Hack", "Vegane Würstchen", "Vogelfutter", "Vogelsand", "Vollkornmehl",
+    "Waschmittel", "Waschmittel-Pods", "Waschpulver", "Wassermelone", "Wasserfilter-Patronen", "Wattepads", "Wattestäbchen", "WC-Reiniger", "WD-40", "Weichspüler", "Weißwein", "Weiße Schokolade", "Whisky", "Wodka", "Wolllotion", "Wäschestärke",
+    "Zahnbürste", "Zahnseide", "Zahnpasta", "Zahnstocher", "Zimt", "Zitronen", "Zitronensäure", "Zucchini", "Zucker", "Zwieback", "Zwiebeln", "Zwetschgen",
+    "Abflussreiniger", "Abschminktücher", "Aftershave", "Ajvar", "Alkohol", "Altbier", "Amaretto", "Amaranth", "Anis", "Aperol", "Apfelessig", "Apfelschorle", "Appenzeller", "Artischocken", "Artischockenherzen", "Aubergine", "Austern", "Austernpilze", "Ayran", "Babybrei", "Babynahrung", "Bacon", "Badschwamm", "Bagel", "Baguette", "Baileys", "Bambussprossen", "Bandnudeln", "Bärlauch", "Basmatireis", "Belugalinsen", "Bio-Mülltüten", "Blaukraut", "Blutorange", "Bockwurst", "Bodenreiniger", "Bodenwischer", "Bohnenkraut", "Bouillon", "Brandy", "Bratfett", "Brathering", "Brathähnchengewürz", "Bratkartoffeln", "Brezel", "Brie", "Brombeeren", "Brühe", "Brunnenkresse", "Buchweizen", "Buntwaschmittel", "Butterbrotpapier", "Butterkäse", "Buttermilch", "Butterschmalz", "Cabanossi", "Calamari", "Camembert", "Campari", "Cashewkerne", "Cashewmus", "Cava", "Cayennepfeffer", "Ceranfeldreiniger", "Cervelatwurst", "Cheddar", "Chicorée", "Chinakohl", "Ciabatta", "Cider", "Cocktailtomaten", "Cognac", "Colorwaschmittel", "Cornflakes", "Cracker", "Cranberries", "Crémant", "Crepes", "Dinkelbrot", "Dinkelmilch", "Dinkelreis", "Doppelkorn", "Dorade", "Drachenfrucht", "Dunkelbier", "Edamame", "Edamer", "Edelstahlreiniger", "Eierlikör", "Einmachzucker", "Eiskaffee", "Endiviensalat", "Ente", "Erdnussöl", "Erdnüsse", "Essigessenz", "Estragon", "Farfalle", "Feinwaschmittel", "Fenchel", "Feta", "Fettlöser", "Feuchttücher", "Filet", "Filoteig", "Fischfrikadellen", "Fischsauce", "Fladenbrot", "Fleischwurst", "Flips", "Fonduekäse", "Forelle", "Frankfurter", "Frühlingszwiebeln", "Fruchtjoghurt", "Fusilli", "Fußcreme", "Galiamelone", "Garam Masala", "Garnelen", "Gartenschere", "Gebissreiniger", "Geflügel", "Gelatine", "Gelee", "Gemischtes Hackfleisch", "Gemüsesaft", "Geschirrtücher", "Gesichtscreme", "Gesichtswasser", "Gießkanne", "Glasnudeln", "Gleitgel", "Gorgonzola", "Grappa", "Griechischer Joghurt", "Grillfleisch", "Grünkohl", "Gruyère", "Gulasch", "Haarbürste", "Haargel", "Haargummis", "Haarkur", "Haarspangen", "Haarspray", "Hagelzucker", "Halloumi", "Hähnchenflügel", "Hähnchenschenkel", "Harzer Käse", "Haselnussaufstrich", "Haselnüsse", "Haselnussmilch", "Heilbutt", "Helles", "Hering", "Himbeeressig", "Hirse", "Hoisinsauce", "Hokkaido", "Holundersirup", "Hörnchen", "Hummer", "Hustenbonbons", "Ingwer-Shot", "Ingwerpulver", "Interdentalbürsten", "Isotonisches Getränk", "Jasminreis", "Johannisbeeren", "Johannisbeersaft", "Jägermeister", "Kabeljau", "Kaffeesahne", "Kakaonibs", "Kalbsschnitzel", "Kamm", "Kaninchen", "Karottensaft", "Karpfen", "Kassler", "Katzenleckerlis", "Kaugummi", "Kaviar", "Kehrblech", "Kekse", "Kerbel", "Kidneybohnen", "Kirschsaft", "Klarspüler", "Klebeband", "Kleintierfutter", "Knoblauchpulver", "Knollensellerie", "Kohlrabi", "Kokosöl", "Kokosraspeln", "Kokoswasser", "Kölsch", "Kombucha", "Kondome", "Konfitüre", "Kontaktlinsenmittel", "Kopfschmerztabletten", "Kopfsalat", "Koriander", "Korianderblätter", "Korn", "Krabben", "Kräuterquark", "Kräutersalz", "Kreuzkümmel", "Kuchen", "Kürbiskernöl", "Kuvertüre", "Lammkeule", "Lammkotelett", "Landjäger", "Lassi", "Laugenstange", "Lebkuchen", "Lebkuchengewürz", "Leberkäse", "Leberwurst", "Leinöl", "Liebstöckel", "Limburger", "Limette", "Limoncello", "Lippenpflege", "Litschi", "Lollo Rosso", "Macadamia", "Mairübchen", "Majoran", "Makkaroni", "Makrele", "Malibu", "Mandel-Drink", "Mandelmus", "Mandarine", "Mangold", "Maracuja", "Margarine", "Maronen", "Martini", "Marzipan", "Maske", "Mate-Tee", "Matjes", "Meersalz", "Meisenknödel", "Menstruationstasse", "Met", "Mettwurst", "Miesmuscheln", "Mikrofasertuch", "Milchbrötchen", "Mirabellen", "Mohn", "Molke", "Mortadella", "Muffins", "Multivitaminsaft", "Mürbeteig", "Nähgarn", "Nähnadeln", "Nachos", "Nagelfeile", "Nagellack", "Nagellackentferner", "Nagelschere", "Naturjoghurt", "Nelken", "Nougat", "Nougatcreme", "Nürnberger Rostbratwurst", "Obstler", "Octopus", "Okraschoten", "Orchideenerde", "Ouzo", "Pak Choi", "Pampelmuse", "Paneer", "Papaya", "Pastinaken", "Pastis", "Peeling", "Pekannüsse", "Penne", "Peperoni", "Pfannkuchen", "Pfifferlinge", "Pflanzenöl", "Pflanzenschutzmittel", "Pils", "Piment", "Pinzette", "Pistazien", "Polenta", "Pomelo", "Pommesgewürz", "Portobello", "Portwein", "Proteinriegel", "Pudding", "Puddingpulver", "Pumpernickel", "Putenbrust", "Putenschnitzel", "Raclettekäse", "Radicchio", "Raki", "Ramen", "Rapsöl", "Ras el Hanout", "Rasendünger", "Rasierschaum", "Rasierklingen", "Räucherlachs", "Reinigungsmilch", "Reisnudeln", "Reissirup", "Remoulade", "Rettich", "Rhabarber", "Rinderfilet", "Rindergulasch", "Rinderhackfleisch", "Rindfleisch", "Risottoreis", "Roggenbrot", "Romanesco", "Roquefort", "Roséwein", "Rote Bete", "Rote Linsen", "Rotkohl", "Rotweinessig", "Rouladen", "Safran", "Salatkräuter", "Salzstangen", "Sambuca", "Sandwichtoast", "Sardellen", "Sardinen", "Sauerrahm", "Scampi", "Schafskäse", "Schalotten", "Schaumfestiger", "Scheuerschwamm", "Schimmelentferner", "Schinkenwürfel", "Schlagsahne", "Schmutzradierer", "Schneckenkorn", "Schokoriegel", "Schupfnudeln", "Schwarzer Pfeffer", "Schwarzwurzeln", "Schweinebauch", "Schweinefilet", "Schweinefleisch", "Schweinegulasch", "Schweinehackfleisch", "Schweineschnitzel", "Sekundenkleber", "Sherry", "Shiitake", "Sicherheitsnadeln", "Sirup", "Skyr", "Slipeinlagen", "Soba-Nudeln", "Sonnencreme", "Spare Ribs", "Spargel", "Spätzle", "Speck", "Spekulatius", "Spekulatiusgewürz", "Spitzkohl", "Sportgetränk", "Sprotten", "Sprühsahne", "Sriracha", "Stachelbeeren", "Starkbier", "Staudensellerie", "Steinpilze", "Sternanis", "Sternfrucht", "Stevia", "Stremellachs", "Stroh", "Sushi-Reis", "Süßstoff", "Sweet-Chili-Sauce", "Tabasco", "Tapioka", "Teewurst", "Tequila", "Teriyaki-Sauce", "Tilsiter", "Tintenfisch", "Tomatensaft", "Tomatillo", "Topinambur", "Torte", "Tortenguss", "Tortillas", "Traubensaft", "Traubenzucker", "Trockenshampoo", "Trüffel", "Udon-Nudeln", "Unkrautvernichter", "Vanilleextrakt", "Vanilleschote", "Veganer Käse", "Verbandszeug", "Vogelkäfigsand", "Vollkornbrot", "Vollkornreis", "Vollmilchschokolade", "Vollwaschmittel", "Wacholderbeeren", "Waffeln", "Waldmeistersirup", "Walnüsse", "Walnussöl", "Weißbier", "Weiße Bohnen", "Weißbrot", "Weißkohl", "Weißwurst", "Weizenbier", "Wermut", "Whiskey", "Wiener Würstchen", "Wildreis", "Wirsing", "Wundcreme", "Wraps", "Yufkateig", "Zander", "Zartbitterschokolade", "Ziegenkäse", "Zitronensaft", "Zuckermelone", "Zuckerrübensirup", "Zwiebelpulver"
+  ];
+
+  const newItemInput = document.getElementById('new-item');
+  const addBtn = document.getElementById('add-btn');
+  const suggestionsBox = document.getElementById('suggestions');
+  const activeList = document.getElementById('active-list');
+  const checkedList = document.getElementById('checked-list');
+  const checkedDivider = document.getElementById('checked-divider');
+  const emptyState = document.getElementById('empty-state');
+  const countPill = document.getElementById('count-pill');
+
+  let listData = { active: [], checked: [] };
+
+  function loadData() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && Array.isArray(parsed.active) && Array.isArray(parsed.checked)) {
+          listData = parsed;
+        }
+      }
+    } catch (e) { /* ignore malformed storage */ }
+  }
+
+  function saveData() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(listData));
+    } catch (e) { /* storage unavailable */ }
+  }
+
+  function checkmarkSVG() {
+    return '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+      '<path d="M5 13l4 4L19 7" stroke="#121212" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  }
+
+  function deleteIconSVG() {
+    return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+      '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+  }
+
+  function render() {
+    activeList.innerHTML = '';
+    checkedList.innerHTML = '';
+
+    const activeFragment = document.createDocumentFragment();
+    listData.active.forEach((item, index) => {
+      activeFragment.appendChild(createItem(item, index, false));
+    });
+    activeList.appendChild(activeFragment);
+
+    if (listData.checked.length > 0) {
+      checkedDivider.style.display = 'flex';
+      const checkedFragment = document.createDocumentFragment();
+      listData.checked.forEach((item, index) => {
+        checkedFragment.appendChild(createItem(item, index, true));
+      });
+      checkedList.appendChild(checkedFragment);
+    } else {
+      checkedDivider.style.display = 'none';
+    }
+
+    const activeCount = listData.active.length;
+    const total = activeCount + listData.checked.length;
+    countPill.textContent = `${activeCount}/${total}`;
+    emptyState.style.display = total === 0 ? 'block' : 'none';
+  }
+
+  function createItem(text, index, isChecked) {
+    const li = document.createElement('li');
+    if (isChecked) li.classList.add('checked-item');
+
+    const checkbox = document.createElement('button');
+    checkbox.className = 'checkbox' + (isChecked ? ' checked' : '');
+    checkbox.setAttribute('aria-label', isChecked ? 'Als offen markieren' : 'Als erledigt markieren');
+    checkbox.innerHTML = checkmarkSVG();
+    checkbox.addEventListener('click', () => toggleItem(index, isChecked));
+
+    const label = document.createElement('span');
+    label.className = 'item-text';
+    label.textContent = text;
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'delete-btn';
+    deleteBtn.setAttribute('aria-label', 'Löschen');
+    deleteBtn.innerHTML = deleteIconSVG();
+    deleteBtn.addEventListener('click', () => deleteItem(index, isChecked));
+
+    li.appendChild(checkbox);
+    li.appendChild(label);
+    li.appendChild(deleteBtn);
+    return li;
+  }
+
+  function toggleItem(index, isChecked) {
+    if (isChecked) {
+      const item = listData.checked.splice(index, 1)[0];
+      listData.active.push(item);
+    } else {
+      const item = listData.active.splice(index, 1)[0];
+      listData.checked.push(item);
+    }
+    render();
+    saveData();
+  }
+
+  function deleteItem(index, isChecked) {
+    if (isChecked) {
+      listData.checked.splice(index, 1);
+    } else {
+      listData.active.splice(index, 1);
+    }
+    render();
+    saveData();
+  }
+
+  function addItem(text) {
+    const value = text.trim();
+    if (value.length === 0) return;
+
+    const checkedIdx = listData.checked.findIndex(item => item.toLowerCase() === value.toLowerCase());
+    if (checkedIdx > -1) listData.checked.splice(checkedIdx, 1);
+
+    const existsInActive = listData.active.some(item => item.toLowerCase() === value.toLowerCase());
+    if (!existsInActive) {
+      listData.active.push(value);
+    }
+
+    newItemInput.value = '';
+    hideSuggestions();
+    render();
+    saveData();
+  }
+
+  function showSuggestions(query) {
+    const q = query.trim().toLowerCase();
+    suggestionsBox.innerHTML = '';
+
+    if (q.length === 0) {
+      hideSuggestions();
+      return;
+    }
+
+    const checkedMatches = listData.checked.filter(item => item.toLowerCase().startsWith(q));
+
+    const presetMatches = PRESET_ITEMS.filter(item => 
+      item.toLowerCase().startsWith(q) &&
+      !listData.active.some(a => a.toLowerCase() === item.toLowerCase()) &&
+      !listData.checked.some(c => c.toLowerCase() === item.toLowerCase()) &&
+      !checkedMatches.some(cm => cm.toLowerCase() === item.toLowerCase())
+    );
+
+    if (checkedMatches.length === 0 && presetMatches.length === 0) {
+      hideSuggestions();
+      return;
+    }
+
+    const suggestionsFragment = document.createDocumentFragment();
+
+    checkedMatches.forEach(match => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'suggestion-chip';
+      chip.textContent = match;
+      chip.addEventListener('click', () => addItem(match));
+      suggestionsFragment.appendChild(chip);
+    });
+
+    presetMatches.forEach(match => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'suggestion-chip preset';
+      chip.textContent = match;
+      chip.addEventListener('click', () => addItem(match));
+      suggestionsFragment.appendChild(chip);
+    });
+
+    suggestionsBox.appendChild(suggestionsFragment);
+    suggestionsBox.style.display = 'flex';
+  }
+
+  function hideSuggestions() {
+    suggestionsBox.style.display = 'none';
+    suggestionsBox.innerHTML = '';
+  }
+
+  newItemInput.addEventListener('input', (e) => showSuggestions(e.target.value));
+
+  newItemInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addItem(newItemInput.value);
+    }
+  });
+
+  addBtn.addEventListener('click', () => addItem(newItemInput.value));
+
+  document.addEventListener('click', (e) => {
+    if (e.target !== newItemInput && !suggestionsBox.contains(e.target)) {
+      hideSuggestions();
+    }
+  });
+
+  loadData();
+  render();
+})();
+</script>
+
+</body>
+</html>
